@@ -1,3 +1,5 @@
+%lang starknet
+
 from starkware.cairo.common.alloc import alloc
 from starkware.cairo.common.uint256 import Uint256
 from starkware.cairo.common.math import unsigned_div_rem
@@ -6,14 +8,22 @@ from starkware.cairo.common.memcpy import memcpy
 
 from contracts.lib.tables import get_char_from_table
 from contracts.lib.binary import binary_encode, add_8bit_padding, binary_decode, remove_6bit_padding
+from contracts.Str import Str
 
 const pow_10_6 = 1000000
 const pow_10_8 = 100000000
 const pow_10_16 = 10000000000000000
 
+func base64_encode_str{range_check_ptr}(input : Str) -> (output : Str):
+    alloc_locals
+
+    let (encoded_str_len, encoded_str) = base64_encode(input.arr_len, input.arr)
+    return (Str(encoded_str_len, encoded_str))
+
 # Main base64 encoder function
 func base64_encode{range_check_ptr}(original_str_len : felt, original_str : felt*) -> (
-        encoded_str_len : felt, encoded_str : felt*):
+    encoded_str_len : felt, encoded_str : felt*
+):
     alloc_locals
 
     let (local encoded_str : felt*) = alloc()
@@ -47,7 +57,8 @@ func base64_encode{range_check_ptr}(original_str_len : felt, original_str : felt
         original_str=original_str,
         encoded_str_len=[encoded_str_len],
         encoded_str=encoded_str,
-        current_index=0)
+        current_index=0,
+    )
 
     if r == 0:
         return ([encoded_str_len], encoded_str)
@@ -79,8 +90,12 @@ end
 # From an inputed original string, takes a group of 3 char at a time and converts them to base64 recursively
 
 func _base64_encode_partial{range_check_ptr}(
-        original_str_len : felt, original_str : felt*, encoded_str_len : felt, encoded_str : felt*,
-        current_index : felt) -> ():
+    original_str_len : felt,
+    original_str : felt*,
+    encoded_str_len : felt,
+    encoded_str : felt*,
+    current_index : felt,
+) -> ():
     alloc_locals
 
     if original_str_len == current_index:
@@ -124,12 +139,14 @@ func _base64_encode_partial{range_check_ptr}(
         original_str=original_str,
         encoded_str_len=encoded_str_len,
         encoded_str=encoded_str,
-        current_index=current_index + 3)
+        current_index=current_index + 3,
+    )
 end
 
 # Performs binary encoding recursively
 func _recursive_binary_encoding{range_check_ptr}(
-        src_data_len : felt, src_data : felt*, dest_data : felt*, index : felt) -> ():
+    src_data_len : felt, src_data : felt*, dest_data : felt*, index : felt
+) -> ():
     alloc_locals
 
     if index == src_data_len:
@@ -145,13 +162,15 @@ func _recursive_binary_encoding{range_check_ptr}(
     assert dest_data[index] = padded_res
 
     return _recursive_binary_encoding(
-        src_data_len=src_data_len, src_data=src_data, dest_data=dest_data, index=index + 1)
+        src_data_len=src_data_len, src_data=src_data, dest_data=dest_data, index=index + 1
+    )
 end
 
 # Concatenates 3 (8-bit) binary encoded chars into a 24-bit binary felt
 
 func concatenate_to_24_bits{range_check_ptr}(
-        binary_encoded_str_len : felt, binary_encoded_str : felt*) -> (concatenated_felt : felt):
+    binary_encoded_str_len : felt, binary_encoded_str : felt*
+) -> (concatenated_felt : felt):
     alloc_locals
 
     # Make sure only 3 UTF-8 chars are passed
@@ -172,7 +191,8 @@ end
 # This makes each felt of the group 6-bits
 
 func slice_into_4_groups{range_check_ptr}(concatenated_felt : felt) -> (
-        sliced_group_len : felt, sliced_group : felt*):
+    sliced_group_len : felt, sliced_group : felt*
+):
     alloc_locals
 
     let (local sliced_group) = alloc()
@@ -187,7 +207,8 @@ func slice_into_4_groups{range_check_ptr}(concatenated_felt : felt) -> (
 end
 
 func _recursive_slice{range_check_ptr}(
-        sliced_group_len : felt, sliced_group : felt*, src_felt : felt, index : felt) -> ():
+    sliced_group_len : felt, sliced_group : felt*, src_felt : felt, index : felt
+) -> ():
     alloc_locals
 
     if index == sliced_group_len:
@@ -201,7 +222,8 @@ func _recursive_slice{range_check_ptr}(
     assert [sliced_group + reverse_index] = r
 
     return _recursive_slice(
-        sliced_group_len, sliced_group=sliced_group, src_felt=q, index=index + 1)
+        sliced_group_len, sliced_group=sliced_group, src_felt=q, index=index + 1
+    )
 end
 
 # This function recursively handles 3 functions
@@ -210,7 +232,8 @@ end
 # - Get the character corresponding to the index represented by the felt
 
 func _recursive_binary_decoding{range_check_ptr}(
-        src_data_len : felt, src_data : felt*, dest_data : felt*, index : felt) -> ():
+    src_data_len : felt, src_data : felt*, dest_data : felt*, index : felt
+) -> ():
     alloc_locals
 
     if index == src_data_len:
@@ -229,7 +252,8 @@ func _recursive_binary_decoding{range_check_ptr}(
     assert dest_data[index] = char_value
 
     return _recursive_binary_decoding(
-        src_data_len=src_data_len, src_data=src_data, dest_data=dest_data, index=index + 1)
+        src_data_len=src_data_len, src_data=src_data, dest_data=dest_data, index=index + 1
+    )
 end
 
 # func _recursive_remove_padding{range_check_ptr}(
